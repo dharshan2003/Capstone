@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MyFinBank | Admin Dashboard</title>
+    <style>
+        body { margin:0; font-family:Arial,sans-serif; background:#020617; color:#e5e7eb; }
+        a { color:#93c5fd; text-decoration:none; }
+        .nav { background:#020617; padding:14px 32px; display:flex; justify-content:space-between;
+               align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.7); }
+        .brand { font-size:20px; font-weight:bold; color:#38bdf8; }
+        .nav-right { font-size:13px; color:#9ca3af; }
+        .container { max-width:1100px; margin:24px auto 40px; padding:0 16px; }
+        h2 { margin-top:0; margin-bottom:8px; }
+        h3 { margin-top:18px; margin-bottom:8px; }
+        .muted { font-size:12px; color:#9ca3af; }
+
+        .grid-2 { display:grid; grid-template-columns:2fr 1.5fr; gap:18px; align-items:flex-start; margin-top:18px; }
+        .grid-1-2 { display:grid; grid-template-columns:1.5fr 1.5fr; gap:18px; align-items:flex-start; margin-top:18px; }
+
+        .card { background:#0f172a; border-radius:12px; padding:14px 18px;
+                box-shadow:0 14px 32px rgba(0,0,0,0.7); }
+        .pill { font-size:12px; color:#9ca3af; margin-bottom:8px; }
+
+        table { width:100%; border-collapse:collapse; font-size:13px; }
+        th, td { padding:6px 8px; border-bottom:1px solid #1f2937; text-align:left; }
+        th { color:#9ca3af; font-weight:600; }
+
+        .badge { padding:2px 8px; border-radius:999px; font-size:11px; }
+        .badge-active { background:#022c22; color:#6ee7b7; }
+        .badge-inactive { background:#3f1d1d; color:#fecaca; }
+
+        .btn-sm { padding:4px 10px; border-radius:999px; border:none; font-size:11px;
+                  cursor:pointer; margin-right:4px; }
+        .btn-outline { background:transparent; color:#e5e7eb; border:1px solid #4b5563; }
+        .btn-primary { background:linear-gradient(135deg,#22c55e,#4ade80); color:#020617; }
+
+        .list { list-style:none; padding:0; margin:0; font-size:13px; }
+        .list li { padding:4px 0; border-bottom:1px solid #1f2937; }
+    </style>
+</head>
+<body>
+<div class="nav">
+    <div class="brand">MyFinBank Admin</div>
+    <div class="nav-right">
+        <span id="adminInfo"></span>
+        &nbsp;|&nbsp;
+        <a href="/admin-login.html">Logout</a>
+    </div>
+</div>
+
+<div class="container">
+    <h2>Welcome, <span id="adminName"></span></h2>
+    <div class="muted">
+        Manage customers, accounts, loans, zero‑balance alerts and customer chat from here.
+    </div>
+
+    <!-- Customers + Accounts -->
+    <div class="grid-2">
+        <!-- Customer management -->
+        <div class="card">
+            <h3>Customers</h3>
+            <div class="pill">Activate / deactivate customers and open their profile.</div>
+            <table id="customersTable">
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th style="width:150px;">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr><td colspan="4" class="muted">Loading customers...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Account management -->
+        <div class="card">
+            <h3>Accounts</h3>
+            <div class="pill">View balances and account types; open recent transactions.</div>
+            <table id="accountsTable">
+                <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Account</th>
+                    <th>Type</th>
+                    <th>Balance</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr><td colspan="4" class="muted">Loading accounts...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Loans + Alerts + Chat -->
+    <div class="grid-1-2">
+        <!-- Loan approvals -->
+        <div class="card">
+            <h3>Pending Loan Applications</h3>
+            <div class="pill">Approve or deny loans based on customer balance.</div>
+            <table id="loansTable">
+                <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Amount</th>
+                    <th>Type</th>
+                    <th style="width:140px;">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr><td colspan="4" class="muted">Loading pending loans...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Zero-balance alerts + Chat -->
+        <div class="card">
+            <h3>Zero Balance Alerts</h3>
+            <div class="pill">Customers whose balance reached zero will show here.</div>
+            <ul id="alertsList" class="list">
+                <li class="muted">Loading alerts...</li>
+            </ul>
+
+            <h3 style="margin-top:16px;">Customer Chat</h3>
+            <div class="pill">Open chat UI to respond to customer queries.</div>
+            <button class="btn-sm btn-primary" onclick="openChat()">
+    Open Chat with Customers
+</button>
+            
+        </div>
+    </div>
+</div>
+
+<script>
+    // Read admin info from query params
+    const params = new URLSearchParams(window.location.search);
+    const adminId = params.get('adminId');
+    const displayName = params.get('displayName') || 'Admin';
+
+    document.getElementById('adminName').textContent = displayName;
+    document.getElementById('adminInfo').textContent =
+        displayName + ' (ID: ' + (adminId || '-') + ')';
+
+    // --- Authenticated fetch using JWT stored in sessionStorage ---
+    function authFetch(url, options = {}) {
+        const token = sessionStorage.getItem('adminJwt');
+        const headers = options.headers ? { ...options.headers } : {};
+        if (token) {
+            headers['Authorization'] = 'Bearer ' + token;
+        } else {
+            // no token -> force login
+            window.location.href = '/admin-login.html';
+            return Promise.reject('No token');
+        }
+        return fetch(url, { ...options, headers });
+    }
+
+    // --- API calls ---
+
+    async function loadCustomers() {
+        const tbody = document.querySelector('#customersTable tbody');
+        tbody.innerHTML = '<tr><td colspan="4" class="muted">Loading customers...</td></tr>';
+        try {
+            const resp = await authFetch('/api/admins/customers');
+            if (!resp.ok) throw new Error();
+            const customers = await resp.json();
+            if (!customers.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="muted">No customers found.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            customers.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${c.name}</td>
+                    <td>${c.email}</td>
+                    <td>
+                        <span class="badge ${c.active ? 'badge-active' : 'badge-inactive'}">
+                            ${c.active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn-sm btn-outline" onclick="viewCustomer(${c.id})">View</button>
+                        <button class="btn-sm btn-primary"
+                            onclick="toggleCustomer(${c.id}, ${c.active})">
+                            ${c.active ? 'Deactivate' : 'Activate'}
+                        </button>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="4" class="muted">Failed to load customers.</td></tr>';
+        }
+    }
+
+    async function loadAccounts() {
+        const tbody = document.querySelector('#accountsTable tbody');
+        tbody.innerHTML = '<tr><td colspan="4" class="muted">Loading accounts...</td></tr>';
+        try {
+            const resp = await authFetch('/api/admins/accounts');
+            if (!resp.ok) throw new Error();
+            const accounts = await resp.json();
+            if (!accounts.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="muted">No accounts found.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            accounts.forEach(a => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${a.customerName}</td>
+                    <td>${a.accountNumber}</td>
+                    <td>${a.accountType}</td>
+                    <td>${a.balance}</td>`;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="4" class="muted">Failed to load accounts.</td></tr>';
+        }
+    }
+
+    async function loadLoans() {
+        const tbody = document.querySelector('#loansTable tbody');
+        tbody.innerHTML = '<tr><td colspan="4" class="muted">Loading pending loans...</td></tr>';
+        try {
+            const resp = await authFetch('/api/admins/loans/pending');
+            if (!resp.ok) throw new Error();
+            const loans = await resp.json();
+            if (!loans.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="muted">No pending loans.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            loans.forEach(l => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${l.customerName}</td>
+                    <td>${l.amount}</td>
+                    <td>${l.type}</td>
+                    <td>
+                        <button class="btn-sm btn-primary" onclick="approveLoan(${l.id})">Approve</button>
+                        <button class="btn-sm btn-outline" onclick="denyLoan(${l.id})">Deny</button>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="4" class="muted">Failed to load loans.</td></tr>';
+        }
+    }
+
+    async function loadZeroBalanceAlerts() {
+        const list = document.getElementById('alertsList');
+        list.innerHTML = '<li class="muted">Loading alerts...</li>';
+        try {
+            const resp = await authFetch('/api/admins/alerts/zero-balance');
+            if (!resp.ok) throw new Error();
+            const alerts = await resp.json();
+            if (!alerts.length) {
+                list.innerHTML = '<li class="muted">No zero‑balance alerts right now.</li>';
+                return;
+            }
+            list.innerHTML = '';
+            alerts.forEach(a => {
+                const li = document.createElement('li');
+                li.textContent = `${a.customerName} – balance ${a.balance}`;
+                list.appendChild(li);
+            });
+        } catch (e) {
+            list.innerHTML = '<li class="muted">Failed to load alerts.</li>';
+        }
+    }
+
+    // Simple placeholders for button actions
+    function viewCustomer(id) {
+        alert('View customer ' + id + ' (open separate page or modal).');
+    }
+
+    async function toggleCustomer(id, currentlyActive) {
+        const action = currentlyActive ? 'deactivate' : 'activate';
+        await authFetch(`/api/admins/customers/${id}/${action}`, { method: 'POST' });
+        loadCustomers();
+    }
+
+    async function approveLoan(id) {
+        await authFetch(`/api/admins/loans/${id}/approve`, { method: 'POST' });
+        loadLoans();
+    }
+
+    async function denyLoan(id) {
+        await authFetch(`/api/admins/loans/${id}/deny`, { method: 'POST' });
+        loadLoans();
+    }
+
+    function openChat() {
+        window.location.href = '/admin-chat.html';
+    }
+
+    // Initial load
+    loadCustomers();
+    loadAccounts();
+    loadLoans();
+    loadZeroBalanceAlerts();
+</script>
+
+</body>
+</html>

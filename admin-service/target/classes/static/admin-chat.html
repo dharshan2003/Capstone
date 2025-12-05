@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Customer Chat | MyFinBank</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#040814; color:#eee; margin:0; }
+    .chat-box { width: 70%; margin: 40px auto; background:#111827; padding:20px; border-radius:8px; }
+    h2 { margin-top:0; }
+    .messages { height: 350px; overflow-y: auto; border:1px solid #1f2937; padding:10px; margin-bottom:10px; }
+    .msg { margin:6px 0; padding:6px 10px; border-radius:6px; max-width:75%; word-wrap:break-word; }
+    .me { background:#3b82f6; margin-left:auto; }
+    .them { background:#374151; margin-right:auto; }
+    .meta { font-size:11px; opacity:0.7; margin-top:2px; }
+    .top-row { margin-bottom:8px; font-size:14px; }
+    .top-row input[type="number"] { width:100px; padding:4px 6px; border-radius:4px; border:1px solid #4b5563;
+                                    background:#020617; color:#e5e7eb; }
+    .top-row button { padding:4px 10px; border:none; border-radius:4px; background:#3b82f6; color:#020617; cursor:pointer; }
+    .top-row button:hover { background:#2563eb; }
+    .hint { font-size:12px; color:#9ca3af; margin-bottom:6px; }
+    .input-row { display:flex; gap:8px; }
+    .input-row input[type="text"] { flex:1; padding:8px; border-radius:4px; border:1px solid #4b5563;
+                                    background:#020617; color:#e5e7eb; }
+    .input-row button { padding:8px 16px; border:none; border-radius:4px; background:#3b82f6; color:#020617; cursor:pointer; }
+    .input-row button:hover { background:#2563eb; }
+  </style>
+</head>
+<body>
+<div class="chat-box">
+  <h2>Chat with Customer</h2>
+  <div class="hint">Enter the customer's ID (same as in Customers list), then click Load.</div>
+  <div class="top-row">
+    <label>Customer ID: </label>
+    <input id="customerId" type="number" min="1" />
+    <button onclick="loadConversation()">Load</button>
+  </div>
+
+  <div class="messages" id="messages"></div>
+
+  <div class="input-row">
+    <input id="messageInput" type="text" placeholder="Type your reply..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script>
+  const BASE_URL = "http://localhost:8081/api/chat";
+  const ROLE = "ADMIN";
+
+  function authFetch(url, options = {}) {
+    const token = sessionStorage.getItem('adminJwt');
+    const headers = options.headers ? { ...options.headers } : {};
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+    } else {
+      window.location.href = '/admin-login.html';
+      return Promise.reject('No token');
+    }
+    return fetch(url, { ...options, headers });
+  }
+
+  async function loadConversation() {
+    const customerId = document.getElementById('customerId').value;
+    if (!customerId) return;
+    try {
+      const res = await authFetch(`${BASE_URL}/conversation/${customerId}`);
+      if (!res.ok) {
+        alert("Failed to load conversation");
+        return;
+      }
+      const data = await res.json();
+      renderMessages(data);
+    } catch (e) {
+      alert("Error contacting chat service");
+    }
+  }
+
+  function renderMessages(list) {
+    const box = document.getElementById('messages');
+    box.innerHTML = "";
+    if (!list || !list.length) {
+      box.innerHTML = '<div class="hint">No messages yet for this customer.</div>';
+      return;
+    }
+    list.forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'msg ' + (m.fromRole === ROLE ? 'me' : 'them');
+      const who = m.fromRole === 'ADMIN' ? 'You' : 'Customer';
+      div.innerHTML = `<div>${m.content}</div><div class="meta">${who} • ${m.sentAt}</div>`;
+      box.appendChild(div);
+    });
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function sendMessage() {
+    const customerId = document.getElementById('customerId').value;
+    const text = document.getElementById('messageInput').value.trim();
+    if (!customerId || !text) return;
+    try {
+      await authFetch(`${BASE_URL}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId, fromRole: ROLE, content: text })
+      });
+      document.getElementById('messageInput').value = "";
+      loadConversation();
+    } catch (e) {
+      alert("Error sending message");
+    }
+  }
+</script>
+</body>
+</html>
