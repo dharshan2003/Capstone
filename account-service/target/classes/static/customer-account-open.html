@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyFinBank | Open Account</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle at top, #1d4ed8, #020617);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    color: #e5e7eb;
+}
+.card {
+    background-color: #020617;
+    padding: 24px 28px;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    width: 320px;
+    max-width: 90vw;
+    box-sizing: border-box;
+}
+.card-header {
+    text-align: center;
+    margin-bottom: 18px;
+}
+.brand {
+    font-size: 22px;
+    font-weight: bold;
+    color: #60a5fa;
+}
+.subtitle {
+    font-size: 13px;
+    color: #9ca3af;
+}
+label {
+    display: block;
+    margin-top: 10px;
+    font-size: 13px;
+}
+input, select {
+    width: 100%;
+    margin-top: 4px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #4b5563;
+    background-color: #020617;
+    color: #e5e7eb;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+input[readonly] {
+    background-color: #020617;
+    color: #9ca3af;
+}
+input:focus, select:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 1px #60a5fa;
+}
+.btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 10px 0;
+    border: none;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #3b82f6, #22c55e);
+    color: #020617;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+}
+.btn:hover {
+    opacity: 0.9;
+}
+.message {
+    margin-top: 12px;
+    font-size: 12px;
+    min-height: 18px;
+    text-align: center;
+}
+.message.error {
+    color: #f97373;
+}
+.message.success {
+    color: #bbf7d0;
+}
+</style>
+</head>
+<body>
+<div class="card">
+    <div class="card-header">
+        <div class="brand">MyFinBank</div>
+        <div class="subtitle">Open New Account</div>
+    </div>
+
+    <form id="accountForm">
+        <label for="customerId">Customer ID</label>
+        <input id="customerId" name="customerId" type="number" readonly />
+
+        <label for="accountType">Account Type</label>
+        <select id="accountType" name="accountType">
+            <option value="SAVINGS">Savings</option>
+            <option value="CURRENT">Current</option>
+        </select>
+
+        <label for="openingBalance">Opening Balance</label>
+        <input id="openingBalance" name="openingBalance" type="number" min="0" />
+
+        <button type="submit" class="btn">Open Account</button>
+        <div id="msg" class="message"></div>
+    </form>
+</div>
+
+<script>
+    const form = document.getElementById('accountForm');
+    const msg = document.getElementById('msg');
+
+    // read customerId from URL or session (set by customer login)
+    const paramsUrl = new URLSearchParams(window.location.search);
+    const preCustomerId =
+        paramsUrl.get('customerId') || sessionStorage.getItem('customerId');
+    if (preCustomerId) {
+        document.getElementById('customerId').value = preCustomerId;
+    }
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        msg.textContent = '';
+        msg.className = 'message';
+
+        const customerId = Number(document.getElementById('customerId').value);
+        if (!customerId) {
+            msg.textContent = 'Customer ID is missing. Please login again.';
+            msg.className = 'message error';
+            return;
+        }
+
+        const payload = {
+            customerId: customerId,
+            accountType: document.getElementById('accountType').value,
+            openingBalance: Number(document.getElementById('openingBalance').value || 0)
+        };
+
+        try {
+            // call separate account-service (no JWT, port 8083)
+            const response = await fetch('http://localhost:8083/api/accounts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                msg.className = 'message error';
+                const err = await response.json().catch(() => ({}));
+                msg.textContent = err.message || 'Account creation failed.';
+                return;
+            }
+
+            const data = await response.json();
+
+            const params = new URLSearchParams({
+                customerId: String(customerId),
+                accountNumber: data.accountNumber,
+                accountType: data.accountType,
+                balance: String(data.balance),
+                status: data.status
+            });
+
+            window.location.href = '/customer-dashboard.html?' + params.toString();
+
+        } catch (e) {
+            msg.textContent = 'Could not reach account-service on port 8083.';
+            msg.className = 'message error';
+        }
+    });
+</script>
+</body>
+</html>
