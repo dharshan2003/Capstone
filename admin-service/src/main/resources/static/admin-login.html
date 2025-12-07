@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MyFinBank | Admin Login</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #020617;
+            color: #e5e7eb;
+        }
+        .container {
+            max-width: 380px;
+            margin: 80px auto;
+            background: #0f172a;
+            padding: 24px 28px;
+            border-radius: 12px;
+            box-shadow: 0 18px 40px rgba(0,0,0,0.8);
+        }
+        h2 { margin-top: 0; margin-bottom: 16px; }
+        label {
+            display: block;
+            font-size: 13px;
+            margin-top: 10px;
+            margin-bottom: 4px;
+            color: #9ca3af;
+        }
+        input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #4b5563;
+            background: #020617;
+            color: #e5e7eb;
+            font-size: 13px;
+        }
+        button {
+            margin-top: 16px;
+            width: 100%;
+            padding: 9px 0;
+            border-radius: 999px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg,#22c55e,#4ade80);
+            color: #020617;
+        }
+        .msg {
+            margin-top: 10px;
+            font-size: 12px;
+            min-height: 16px;
+        }
+        .error { color: #f97373; }
+        .link {
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .link a {
+            color: #93c5fd;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Admin Login</h2>
+
+    <label>Email</label>
+    <input id="loginEmail" type="text" placeholder="admin@example.com">
+
+    <label>Password</label>
+    <input id="loginSecret" type="password" placeholder="••••••••">
+
+    <button id="loginBtn">Login</button>
+
+    <div id="msg" class="msg"></div>
+
+    <div class="link">
+        New admin? <a href="/admin-register.html">Register here</a>
+    </div>
+</div>
+
+<script>
+    const msg = document.getElementById('msg');
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+        msg.textContent = '';
+        msg.className = 'msg';
+
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginSecret').value.trim();
+
+        if (!email || !password) {
+            msg.textContent = 'Enter email and password.';
+            msg.className = 'msg error';
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (!resp.ok) {
+                msg.textContent = 'Invalid email or password.';
+                msg.className = 'msg error';
+                return;
+            }
+
+            // expected response: { token, adminId, displayName }
+            const data = await resp.json();
+            const token = data.token;
+
+            if (!token) {
+                msg.textContent = 'No token returned from server.';
+                msg.className = 'msg error';
+                return;
+            }
+
+            // store JWT and basic info
+            sessionStorage.setItem('adminJwt', token);
+            if (data.adminId !== undefined) {
+                sessionStorage.setItem('adminId', data.adminId);
+            }
+            if (data.displayName) {
+                sessionStorage.setItem('adminDisplayName', data.displayName);
+            }
+
+            // always go to dashboard only after successful login
+            window.location.href = '/admin-dashboard.html';
+        } catch (e) {
+            msg.textContent = 'Server error during login.';
+            msg.className = 'msg error';
+        }
+    });
+</script>
+</body>
+</html>

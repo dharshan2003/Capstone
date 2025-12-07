@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MyFinBank | Customer Profile</title>
+    <style>
+        body { margin:0; font-family:Arial,sans-serif; background:#020617; color:#e5e7eb; }
+        a { color:#93c5fd; text-decoration:none; }
+        .nav { background:#020617; padding:14px 32px; display:flex; justify-content:space-between;
+               align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.7); }
+        .brand { font-size:20px; font-weight:bold; color:#38bdf8; }
+        .nav-right { font-size:13px; color:#9ca3af; }
+        .container { max-width:1000px; margin:24px auto 40px; padding:0 16px; }
+        h2 { margin-top:0; margin-bottom:8px; }
+        h3 { margin-top:18px; margin-bottom:8px; }
+        .muted { font-size:12px; color:#9ca3af; }
+
+        .grid-2 { display:grid; grid-template-columns:1.2fr 1.8fr; gap:18px; align-items:flex-start; margin-top:18px; }
+
+        .card { background:#0f172a; border-radius:12px; padding:14px 18px;
+                box-shadow:0 14px 32px rgba(0,0,0,0.7); }
+
+        table { width:100%; border-collapse:collapse; font-size:13px; }
+        th, td { padding:6px 8px; border-bottom:1px solid #1f2937; text-align:left; }
+        th { color:#9ca3af; font-weight:600; }
+
+        .badge { padding:2px 8px; border-radius:999px; font-size:11px; }
+        .badge-active { background:#022c22; color:#6ee7b7; }
+        .badge-inactive { background:#3f1d1d; color:#fecaca; }
+
+        .btn-sm { padding:4px 10px; border-radius:999px; border:none; font-size:11px;
+                  cursor:pointer; margin-right:4px; }
+        .btn-outline { background:transparent; color:#e5e7eb; border:1px solid #4b5563; }
+        .btn-primary { background:linear-gradient(135deg,#22c55e,#4ade80); color:#020617; }
+    </style>
+</head>
+<body>
+<div class="nav">
+    <div class="brand">MyFinBank Admin</div>
+    <div class="nav-right">
+        <span id="adminInfo"></span>
+        &nbsp;|&nbsp;
+        <a href="/admin-dashboard.html">Back to Dashboard</a>
+    </div>
+</div>
+
+<div class="container">
+    <h2>Customer Profile</h2>
+    <div class="muted">View customer details, status and recent transactions.</div>
+
+    <div class="grid-2">
+        <!-- left: basic info -->
+        <div class="card">
+            <h3>Details</h3>
+            <p><span class="muted">Name:</span> <span id="custName"></span></p>
+            <p><span class="muted">Email:</span> <span id="custEmail"></span></p>
+            <p><span class="muted">Status:</span>
+                <span id="custStatus" class="badge"></span>
+            </p>
+        </div>
+
+        <!-- right: transactions -->
+        <div class="card">
+            <h3>Recent Transactions</h3>
+            <div class="muted">Last few transactions performed by this customer.</div>
+            <table id="txTable">
+                <thead>
+                <tr>
+                    <th>Txn ID</th>
+                    <th>Type</th>
+                    <th>Account</th>
+                    <th>Amount</th>
+                    <th>When</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr><td colspan="5" class="muted">Loading transactions...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // require JWT like other pages
+    const token = sessionStorage.getItem('adminJwt');
+    if (!token) {
+        window.location.href = '/admin-login.html';
+    }
+    const adminId = sessionStorage.getItem('adminId') || '-';
+    const adminDisplayName = sessionStorage.getItem('adminDisplayName') || 'Admin';
+    document.getElementById('adminInfo').textContent =
+        adminDisplayName + ' (ID: ' + adminId + ')';
+
+    function authFetch(url, options = {}) {
+        const headers = options.headers ? { ...options.headers } : {};
+        headers['Authorization'] = 'Bearer ' + token;
+        return fetch(url, { ...options, headers });
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const customerId = params.get('customerId');
+    const accountNumber = params.get('accountNumber'); // passed from dashboard
+
+    // load basic customer info from /admin/customers/{id}
+    async function loadCustomer() {
+        try {
+            const resp = await authFetch('/admin/customers/' + customerId);
+            if (!resp.ok) throw new Error();
+            const c = await resp.json();
+            document.getElementById('custName').textContent = c.fullName;
+            document.getElementById('custEmail').textContent = c.email;
+            const badge = document.getElementById('custStatus');
+            badge.textContent = c.active ? 'Active' : 'Inactive';
+            badge.className = 'badge ' + (c.active ? 'badge-active' : 'badge-inactive');
+        } catch (e) {
+            document.getElementById('custName').textContent = 'Failed to load';
+        }
+    }
+
+    // load recent transactions for this account
+    async function loadTransactions() {
+        const tbody = document.querySelector('#txTable tbody');
+        tbody.innerHTML = '<tr><td colspan="5" class="muted">Loading transactions...</td></tr>';
+        if (!accountNumber) {
+            tbody.innerHTML = '<tr><td colspan="5" class="muted">No account selected.</td></tr>';
+            return;
+        }
+        try {
+        	const resp = await authFetch('/api/admins/accounts/' +
+                    encodeURIComponent(accountNumber) +
+                    '/transactions');
+
+            if (!resp.ok) throw new Error();
+            const txns = await resp.json();
+            if (!txns.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="muted">No transactions found.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            txns.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${t.transactionId}</td>
+                    <td>${t.type}</td>
+                    <td>${t.accountNumber}</td>
+                    <td>${t.amount}</td>
+                    <td>${t.timestamp}</td>`;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="5" class="muted">Failed to load transactions.</td></tr>';
+        }
+    }
+
+    loadCustomer();
+    loadTransactions();
+</script>
+</body>
+</html>
