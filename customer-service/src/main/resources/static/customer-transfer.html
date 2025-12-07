@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyFinBank | Transfer Money</title>
+<style>
+body {
+margin: 0;
+font-family: Arial, sans-serif;
+background: radial-gradient(circle at top, #0f172a, #020617);
+color: #e5e7eb;
+display: flex;
+min-height: 100vh;
+align-items: center;
+justify-content: center;
+}
+.card {
+background: #020617;
+padding: 24px 28px;
+border-radius: 12px;
+box-shadow: 0 18px 40px rgba(0,0,0,0.8);
+width: 380px;
+max-width: 95vw;
+}
+.title { font-size: 20px; margin-bottom: 6px; color: #38bdf8; }
+.subtitle { font-size: 13px; color: #9ca3af; margin-bottom: 14px; }
+label { display: block; margin-top: 10px; font-size: 13px; }
+input {
+width: 100%; margin-top: 4px; padding: 8px 10px;
+border-radius: 6px; border: 1px solid #4b5563;
+background-color: #020617; color: #e5e7eb; font-size: 13px;
+}
+input:focus {
+outline: none;
+border-color: #38bdf8;
+box-shadow: 0 0 0 1px #38bdf8;
+}
+.btn {
+width: 100%; margin-top: 16px; padding: 10px 0;
+border: none; border-radius: 6px;
+background: linear-gradient(90deg,#0ea5e9,#22c55e);
+color: #020617; font-weight: 600; cursor: pointer; font-size: 14px;
+}
+.btn:hover { opacity: 0.9; }
+.message { margin-top: 12px; font-size: 12px; min-height: 18px; }
+.message.error { color:#f97373; }
+.message.success { color:#4ade80; }
+.back-link { margin-top: 10px; font-size: 12px; }
+.back-link a { color:#93c5fd; text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="card">
+<div class="title">Transfer Money</div>
+<div class="subtitle">
+Move funds from one account number to another within MyFinBank.
+</div>
+
+<form id="transferForm">
+<label for="fromAccount">From account</label>
+<input id="fromAccount" type="text" required>
+
+<label for="toAccount">To account</label>
+<input id="toAccount" type="text" required>
+
+<label for="amount">Amount</label>
+<input id="amount" type="number" min="1" step="0.01" required>
+
+<button type="submit" class="btn">Transfer</button>
+</form>
+
+<div id="msg" class="message"></div>
+
+<div class="back-link">
+<a id="backToDashboard" href="#">← Back to Dashboard</a>
+</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const customerId = params.get('customerId') || '';
+const displayName = params.get('displayName') || 'Customer';
+const accountNumber = params.get('accountNumber') || '';
+
+// pre-fill fromAccount with current dashboard account if available
+if (accountNumber) {
+document.getElementById('fromAccount').value = accountNumber;
+}
+
+const backLink = document.getElementById('backToDashboard');
+const dashParams = new URLSearchParams({
+customerId: customerId,
+displayName: displayName,
+accountNumber: accountNumber
+});
+backLink.href = '/customer-dashboard.html?' + dashParams.toString();
+
+const form = document.getElementById('transferForm');
+const msg = document.getElementById('msg');
+
+form.addEventListener('submit', async (event) => {
+event.preventDefault();
+msg.textContent = '';
+msg.className = 'message';
+
+const fromAccount = document.getElementById('fromAccount').value.trim();
+const toAccount = document.getElementById('toAccount').value.trim();
+const amount = Number(document.getElementById('amount').value || 0);
+
+if (!fromAccount || !toAccount || !amount || amount <= 0) {
+msg.textContent = 'Please enter from, to, and a positive amount.';
+msg.className = 'message error';
+return;
+}
+
+try {
+const resp = await fetch('/api/accounts/transfer', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({
+fromAccount: fromAccount,
+toAccount: toAccount,
+amount: amount
+})
+});
+
+if (!resp.ok) {
+const err = await resp.json().catch(() => ({}));
+msg.textContent = err.message || 'Transfer failed.';
+msg.className = 'message error';
+return;
+}
+
+const data = await resp.json();
+msg.textContent = 'Transfer successful. Destination balance: ' + data.balance;
+msg.className = 'message success';
+document.getElementById('amount').value = '';
+} catch (e) {
+msg.textContent = 'Could not reach server. Is customer-service running?';
+msg.className = 'message error';
+}
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyFinBank | Transactions</title>
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle at top, #0f172a, #020617);
+    color: #e5e7eb;
+}
+.nav {
+    background: #020617;
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+.nav-brand { font-size: 22px; font-weight: bold; color: #38bdf8; }
+.nav-right { font-size: 12px; color: #9ca3af; }
+.container {
+    max-width: 900px;
+    margin: 32px auto;
+    padding: 0 16px 40px;
+}
+.title { font-size: 24px; margin-bottom: 16px; }
+.card {
+    background: rgba(15,23,42,0.95);
+    border-radius: 12px;
+    padding: 24px 28px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.8);
+}
+.info-row {
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+.label { color:#9ca3af; margin-right:8px; }
+.value { font-weight:600; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 18px;
+    font-size: 13px;
+}
+th, td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #1f2937;
+    text-align: left;
+}
+th { background: rgba(15,23,42,0.9); color:#9ca3af; font-weight:600; }
+tr:nth-child(even) { background: rgba(15,23,42,0.7); }
+.badge-type {
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.4);
+}
+.message { margin-top: 10px; font-size: 12px; min-height:16px; }
+.message.error { color:#f97373; }
+.message.success { color:#4ade80; }
+.back-link {
+    display:inline-block;
+    margin-top:16px;
+    font-size:12px;
+    color:#93c5fd;
+    text-decoration:none;
+}
+.back-link:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+    <div class="nav-brand">MyFinBank</div>
+    <div class="nav-right">
+        <span id="navCustomer"></span>
+        &nbsp;|&nbsp;
+        <a href="/index.html" style="color:#93c5fd; text-decoration:none;">Logout</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="title">Transaction History</div>
+    <div class="card">
+        <div class="info-row">
+            <span class="label">Customer:</span>
+            <span class="value" id="custName"></span>
+            <span class="label" style="margin-left:16px;">ID:</span>
+            <span class="value" id="custId"></span>
+        </div>
+        <div class="info-row">
+            <span class="label">Account Number:</span>
+            <span class="value" id="accNo"></span>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Transaction ID</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody id="txBody">
+            </tbody>
+        </table>
+
+        <div id="msg" class="message"></div>
+
+        <a href="javascript:history.back()" class="back-link">&larr; Back to Dashboard</a>
+    </div>
+</div>
+
+<script>
+// read params
+const params = new URLSearchParams(window.location.search);
+const customerId = params.get('customerId');
+const fullName = params.get('fullName') || 'Customer';
+const accountNumber = params.get('accountNumber');
+
+document.getElementById('custId').textContent = customerId || '-';
+document.getElementById('custName').textContent = fullName;
+document.getElementById('navCustomer').textContent =
+    fullName + ' (ID: ' + (customerId || '-') + ')';
+document.getElementById('accNo').textContent = accountNumber || '-';
+
+const msg = document.getElementById('msg');
+const tbody = document.getElementById('txBody');
+
+async function loadTransactions() {
+    if (!accountNumber) {
+        msg.textContent = 'Account number is missing. Open dashboard again.';
+        msg.className = 'message error';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`http://localhost:8081/api/accounts/transactions/${accountNumber}`)
+;
+        if (!resp.ok) {
+            msg.textContent = 'Could not load transactions.';
+            msg.className = 'message error';
+            return;
+        }
+        const list = await resp.json();
+        if (!list || list.length === 0) {
+            msg.textContent = 'No transactions found for this account.';
+            msg.className = 'message';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        list.forEach(tx => {
+            const tr = document.createElement('tr');
+
+            const tdId = document.createElement('td');
+            tdId.textContent = tx.transactionId;
+            tr.appendChild(tdId);
+
+            const tdType = document.createElement('td');
+            const spanType = document.createElement('span');
+            spanType.className = 'badge-type';
+            spanType.textContent = tx.type;
+            tdType.appendChild(spanType);
+            tr.appendChild(tdType);
+
+            const tdAmt = document.createElement('td');
+            tdAmt.textContent = tx.amount;
+            tr.appendChild(tdAmt);
+
+            const tdTime = document.createElement('td');
+            tdTime.textContent = tx.timestamp;
+            tr.appendChild(tdTime);
+
+            tbody.appendChild(tr);
+        });
+
+        msg.textContent = '';
+        msg.className = 'message success';
+    } catch (e) {
+        msg.textContent = 'Server error while loading transactions.';
+        msg.className = 'message error';
+    }
+}
+
+loadTransactions();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyFinBank | Fixed Deposit</title>
+<style>
+body {
+margin: 0;
+font-family: Arial, sans-serif;
+background: radial-gradient(circle at top, #0f172a, #020617);
+color: #e5e7eb;
+}
+.nav {
+background: #020617;
+padding: 14px 32px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+.nav-brand { font-size: 22px; font-weight: bold; color: #38bdf8; }
+.nav-right { font-size: 12px; color: #9ca3af; }
+.container {
+max-width: 700px;
+margin: 32px auto;
+padding: 0 16px 40px;
+}
+.card {
+background: rgba(15,23,42,0.95);
+border-radius: 12px;
+padding: 24px 28px;
+box-shadow: 0 18px 40px rgba(0,0,0,0.8);
+}
+.title { font-size: 22px; margin-bottom: 12px; }
+label {
+display: block;
+font-size: 13px;
+margin-top: 12px;
+margin-bottom: 4px;
+color: #9ca3af;
+}
+input {
+width: 100%;
+padding: 8px 10px;
+border-radius: 8px;
+border: 1px solid #4b5563;
+background: #020617;
+color: #e5e7eb;
+font-size: 13px;
+}
+.btn-row {
+margin-top: 18px;
+display: flex;
+gap: 10px;
+}
+.btn {
+padding: 8px 16px;
+border-radius: 999px;
+font-size: 13px;
+font-weight: 600;
+border: none;
+cursor: pointer;
+}
+.btn-primary {
+background: linear-gradient(135deg,#22c55e,#4ade80);
+color: #020617;
+}
+.btn-secondary {
+background: #111827;
+color: #e5e7eb;
+border: 1px solid #4b5563;
+}
+.message { margin-top: 10px; font-size: 12px; min-height:16px; }
+.message.error { color:#f97373; }
+.message.success { color:#4ade80; }
+.note { margin-top: 12px; font-size: 12px; color:#9ca3af; }
+</style>
+</head>
+<body>
+<div class="nav">
+<div class="nav-brand">MyFinBank</div>
+<div class="nav-right">
+<span id="navCustomer"></span>
+&nbsp;|&nbsp;
+<a href="/index.html" style="color:#93c5fd; text-decoration:none;">Logout</a>
+</div>
+</div>
+
+<div class="container">
+<div class="card">
+<div class="title">Open Fixed Deposit</div>
+
+<label>Linked Account Number</label>
+<input id="accountNumber" type="text" disabled>
+
+<label>Principal Amount</label>
+<input id="principalAmount" type="number" min="1" step="0.01" placeholder="e.g. 5000">
+
+<label>Tenure (months)</label>
+<input id="months" type="number" min="1" step="1" placeholder="e.g. 12">
+
+<label>Interest Rate (% per annum)</label>
+<input id="interestRate" type="number" min="1" step="0.1" placeholder="e.g. 8.5">
+
+<div class="btn-row">
+<button class="btn btn-primary" id="createFdBtn">Create FD</button>
+<button class="btn btn-secondary" id="backBtn">Back to Dashboard</button>
+</div>
+
+<div id="msg" class="message"></div>
+
+<div class="note">
+Amount will be deducted from your linked account and blocked in this Fixed Deposit.
+</div>
+</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const customerId = params.get('customerId');
+const fullName = params.get('fullName') || 'Customer';
+const accountNumber = params.get('accountNumber') || '';
+
+document.getElementById('navCustomer').textContent =
+fullName + ' (ID: ' + (customerId || '-') + ')';
+document.getElementById('accountNumber').value = accountNumber;
+
+const msg = document.getElementById('msg');
+
+// helper to call secured APIs with JWT
+function authFetch(url, options = {}) {
+const token = sessionStorage.getItem('customerJwt');
+if (!token) {
+window.location.href = '/customer-login.html';
+return Promise.reject('No token');
+}
+const headers = options.headers ? { ...options.headers } : {};
+headers['Authorization'] = 'Bearer ' + token;
+return fetch(url, { ...options, headers });
+}
+
+document.getElementById('backBtn').addEventListener('click', () => {
+const qp = new URLSearchParams({
+customerId: customerId || '',
+fullName: fullName,
+accountNumber: accountNumber || ''
+});
+window.location.href = '/customer-dashboard.html?' + qp.toString();
+});
+
+document.getElementById('createFdBtn').addEventListener('click', async () => {
+msg.textContent = '';
+msg.className = 'message';
+
+if (!customerId || !accountNumber) {
+msg.textContent = 'Missing customer or account information.';
+msg.className = 'message error';
+return;
+}
+
+const principal = Number(document.getElementById('principalAmount').value || 0);
+const months = Number(document.getElementById('months').value || 0);
+const rate = Number(document.getElementById('interestRate').value || 0);
+
+if (principal <= 0 || months <= 0 || rate <= 0) {
+msg.textContent = 'Enter positive values for all fields.';
+msg.className = 'message error';
+return;
+}
+
+try {
+const resp = await authFetch('/api/investments/fd', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({
+customerId: Number(customerId),
+accountNumber: accountNumber,
+principalAmount: principal,
+months: months,
+interestRate: rate
+})
+});
+
+if (!resp.ok) {
+const err = await resp.json().catch(() => ({}));
+msg.textContent = err.message || 'Failed to create Fixed Deposit.';
+msg.className = 'message error';
+return;
+}
+
+const data = await resp.json();
+msg.textContent = 'Fixed Deposit created. Maturity Amount: ' + data.maturityAmount;
+msg.className = 'message success';
+
+} catch (e) {
+msg.textContent = 'Server error while creating Fixed Deposit.';
+msg.className = 'message error';
+}
+});
+</script>
+</body>
+</html>

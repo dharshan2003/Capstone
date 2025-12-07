@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyFinBank | Account Dashboard</title>
+
+<style>
+body {
+margin: 0;
+font-family: Arial, sans-serif;
+background: radial-gradient(circle at top, #0f172a, #020617);
+color: #e5e7eb;
+}
+.nav {
+background: #020617;
+padding: 14px 32px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+.nav-brand { font-size: 22px; font-weight: bold; color: #38bdf8; }
+.nav-right { font-size: 12px; color: #9ca3af; }
+.container {
+max-width: 900px;
+margin: 32px auto;
+padding: 0 16px 40px;
+}
+.title { font-size: 24px; margin-bottom: 16px; }
+.card {
+background: rgba(15,23,42,0.95);
+border-radius: 12px;
+padding: 24px 28px;
+box-shadow: 0 18px 40px rgba(0,0,0,0.8);
+}
+.row {
+display: flex;
+justify-content: space-between;
+margin-bottom: 8px;
+font-size: 14px;
+}
+.label { color: #9ca3af; }
+.value { color: #e5e7eb; font-weight: 600; }
+.highlight-balance {
+font-size: 22px;
+margin-top: 12px;
+color: #4ade80;
+}
+.status-badge {
+display: inline-block;
+padding: 3px 10px;
+border-radius: 999px;
+font-size: 11px;
+background: rgba(34,197,94,0.15);
+color: #4ade80;
+border: 1px solid rgba(34,197,94,0.5);
+}
+.actions-row {
+margin-top: 24px;
+display: flex;
+flex-direction: column;
+gap: 16px;
+}
+.action-group {
+background: rgba(15,23,42,0.96);
+border-radius: 12px;
+padding: 10px 16px;
+border: 1px solid rgba(148,163,184,0.18);
+}
+.action-label {
+font-size: 11px;
+text-transform: uppercase;
+letter-spacing: 0.08em;
+color: #9ca3af;
+margin-bottom: 8px;
+display: block;
+}
+.action-line {
+display: flex;
+flex-wrap: wrap;
+gap: 10px;
+align-items: center;
+}
+.pill-btn {
+border-radius: 999px;
+border: none;
+padding: 7px 18px;
+font-size: 12px;
+font-weight: 600;
+cursor: pointer;
+transition: all 0.18s ease;
+box-shadow: 0 6px 18px rgba(15,23,42,0.8);
+}
+.pill-primary {
+background: linear-gradient(135deg, #22c55e, #4ade80);
+color: #020617;
+}
+.pill-danger {
+background: linear-gradient(135deg, #ef4444, #fb7185);
+color: #f9fafb;
+}
+.pill-outline {
+background: transparent;
+color: #e5e7eb;
+border: 1px solid rgba(148,163,184,0.5);
+}
+.pill-btn:hover {
+transform: translateY(-1px);
+box-shadow: 0 10px 24px rgba(15,23,42,0.9);
+filter: brightness(1.05);
+}
+.amount-input {
+background: #020617;
+border-radius: 999px;
+border: 1px solid rgba(148,163,184,0.5);
+padding: 7px 12px;
+color: #e5e7eb;
+font-size: 12px;
+width: 120px;
+}
+.note { margin-top: 18px; font-size: 12px; color: #9ca3af; }
+.message { margin-top: 10px; font-size: 12px; min-height:16px; }
+.message.error { color:#f97373; }
+.message.success { color:#4ade80; }
+</style>
+</head>
+<body>
+<div class="nav">
+<div class="nav-brand">MyFinBank</div>
+<div class="nav-right">
+<span id="navCustomer"></span>
+&nbsp;|&nbsp;
+<a href="/index.html" style="color:#93c5fd; text-decoration:none;">Logout</a>
+</div>
+</div>
+
+<div class="container">
+<div class="title">Account Dashboard</div>
+<div class="card">
+<div class="row">
+<div class="label">Customer ID</div>
+<div class="value" id="custId"></div>
+</div>
+<div class="row">
+<div class="label">Customer Name</div>
+<div class="value" id="custName"></div>
+</div>
+
+<hr style="border-color:#1f2937; margin:16px 0;">
+
+<div class="row">
+<div class="label">Account Number</div>
+<div class="value" id="accNo"></div>
+</div>
+<div class="row">
+<div class="label">Account Type</div>
+<div class="value" id="accType"></div>
+</div>
+<div class="row">
+<div class="label">Status</div>
+<div class="value">
+<span class="status-badge" id="statusBadge"></span>
+</div>
+</div>
+
+<div class="highlight-balance">
+Current Balance: <span id="balance"></span>
+</div>
+
+<div class="actions-row">
+<div class="action-group">
+<span class="action-label">Balance actions</span>
+<div class="action-line">
+<button class="pill-btn pill-primary" id="depositBtn">Deposit</button>
+<input type="number" id="depositAmount" placeholder="Amount" class="amount-input">
+<button class="pill-btn pill-danger" id="withdrawBtn">Withdraw</button>
+<input type="number" id="withdrawAmount" placeholder="Amount" class="amount-input">
+</div>
+</div>
+
+<div class="action-group">
+<span class="action-label">Services</span>
+<div class="action-line">
+<button class="pill-btn pill-outline" id="loanBtn">Apply for Loan</button>
+<button class="pill-btn pill-outline" id="transferPageBtn">Transfer Money</button>
+<button class="pill-btn pill-outline" id="myLoansBtn">My Loans</button>
+<button class="pill-btn pill-outline" id="fdPageBtn">Fixed Deposit</button>
+<button class="pill-btn pill-outline" id="rdPageBtn">Recurring Deposit</button>
+<button class="pill-btn pill-outline" id="investmentsPageBtn">My Investments</button>
+<button class="pill-btn pill-outline" onclick="window.location.href='customer-chat.html'">
+Chat with Bank
+</button>
+<button class="pill-btn pill-outline" id="transactionsPageBtn">View Transactions</button>
+
+</div>
+</div>
+</div>
+
+<div id="msg" class="message"></div>
+
+<div class="note">
+Use deposit and withdraw to update your balance.
+Click “Apply for Loan”, “Transfer Money”, or “My Loans” to manage your services.
+</div>
+</div>
+</div>
+
+<script>
+// 1) Require JWT to view dashboard
+const jwt = sessionStorage.getItem('customerJwt');
+if (!jwt) {
+window.location.href = '/customer-login.html';
+}
+
+const params = new URLSearchParams(window.location.search);
+const customerId = sessionStorage.getItem('customerId') || params.get('customerId');
+const fullName = sessionStorage.getItem('customerName') || params.get('fullName') || 'Customer';
+let accountNumber = params.get('accountNumber') || '';
+
+document.getElementById('custId').textContent = customerId || '-';
+document.getElementById('custName').textContent = fullName;
+document.getElementById('navCustomer').textContent =
+fullName + ' (ID: ' + (customerId || '-') + ')';
+
+const msg = document.getElementById('msg');
+
+async function loadAccount() {
+if (!customerId) {
+msg.textContent = 'Customer information is missing. Please login again.';
+msg.className = 'message error';
+return;
+}
+try {
+const resp = await fetch(`http://localhost:8081/api/accounts/customer/${customerId}`);
+if (!resp.ok) {
+msg.textContent = 'Could not load account details.';
+msg.className = 'message error';
+return;
+}
+const list = await resp.json();
+if (!list || list.length === 0) {
+msg.textContent = 'No account found. Please open an account first.';
+msg.className = 'message error';
+return;
+}
+const acc = list[0];
+updateView(acc);
+} catch (e) {
+msg.textContent = 'Could not load account details.';
+msg.className = 'message error';
+}
+}
+
+function updateView(acc) {
+if (!acc) { return; }
+accountNumber = acc.accountNumber;
+document.getElementById('accNo').textContent = acc.accountNumber;
+document.getElementById('accType').textContent = acc.accountType;
+document.getElementById('balance').textContent = acc.balance;
+const badge = document.getElementById('statusBadge');
+badge.textContent = acc.status;
+
+if (acc.status && acc.status.toUpperCase() === 'ACTIVE') {
+    badge.style.backgroundColor = 'rgba(34,197,94,0.15)';
+    badge.style.color = '#4ade80';
+    badge.style.borderColor = 'rgba(34,197,94,0.5)';
+} else {
+    badge.style.backgroundColor = 'rgba(239,68,68,0.15)';
+    badge.style.color = '#f97373';
+    badge.style.borderColor = 'rgba(239,68,68,0.5)';
+}
+msg.textContent = '';
+msg.className = 'message';
+}
+
+async function doOperation(kind) {
+msg.textContent = '';
+msg.className = 'message';
+
+const amountInput = kind === 'deposit'
+? document.getElementById('depositAmount')
+: document.getElementById('withdrawAmount');
+
+const amount = Number(amountInput.value || 0);
+if (!amount || amount <= 0) {
+msg.textContent = 'Enter a positive amount.';
+msg.className = 'message error';
+return;
+}
+
+try {
+const resp = await fetch(`http://localhost:8081/api/accounts/${accountNumber}/${kind}`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ amount: amount })
+});
+
+if (!resp.ok) {
+const err = await resp.json().catch(() => ({}));
+msg.textContent = err.message || (kind + ' failed.');
+msg.className = 'message error';
+return;
+}
+
+const data = await resp.json();
+updateView(data);
+msg.textContent = (kind === 'deposit' ? 'Deposit' : 'Withdrawal') +
+' successful. New balance: ' + data.balance;
+msg.className = 'message success';
+amountInput.value = '';
+
+} catch (e) {
+msg.textContent = 'Server error while performing transaction.';
+msg.className = 'message error';
+}
+}
+
+document.getElementById('depositBtn')
+.addEventListener('click', () => doOperation('deposit'));
+document.getElementById('withdrawBtn')
+.addEventListener('click', () => doOperation('withdraw'));
+
+function goWithQuery(path) {
+const qp = new URLSearchParams({
+customerId: customerId || '',
+fullName: fullName,
+accountNumber: accountNumber || ''
+});
+window.location.href = path + '?' + qp.toString();
+}
+
+document.getElementById('loanBtn')
+.addEventListener('click', () => goWithQuery('/customer-loan-apply.html'));
+document.getElementById('transferPageBtn')
+.addEventListener('click', () => goWithQuery('/customer-transfer.html'));
+document.getElementById('myLoansBtn')
+.addEventListener('click', () => goWithQuery('/customer-loans.html'));
+document.getElementById('fdPageBtn')
+.addEventListener('click', () => goWithQuery('/customer-fd.html'));
+document.getElementById('rdPageBtn')
+.addEventListener('click', () => goWithQuery('/customer-rd.html'));
+document.getElementById('investmentsPageBtn')
+.addEventListener('click', () => goWithQuery('/customer-investments.html'));
+document.getElementById('transactionsPageBtn')
+.addEventListener('click', () => goWithQuery('/Transaction ID.html'));
+
+
+loadAccount();
+</script>
+
+</body>
+</html>

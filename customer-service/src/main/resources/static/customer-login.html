@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyFinBank | Customer Login</title>
+<style>
+body {
+font-family: Arial, sans-serif;
+background: radial-gradient(circle at top, #1d4ed8, #020617);
+margin: 0;
+display: flex;
+align-items: center;
+justify-content: center;
+min-height: 100vh;
+color: #e5e7eb;
+}
+.card {
+background-color: #020617;
+padding: 24px 28px;
+border-radius: 12px;
+box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+width: 320px;
+max-width: 90vw;
+}
+.card-header { text-align: center; margin-bottom: 18px; }
+.brand { font-size: 22px; font-weight: bold; color: #60a5fa; }
+.subtitle { font-size: 13px; color: #9ca3af; }
+label { display: block; margin-top: 10px; font-size: 13px; }
+input {
+width: 100%;
+margin-top: 4px;
+padding: 8px 10px;
+border-radius: 6px;
+border: 1px solid #4b5563;
+background-color: #020617;
+color: #e5e7eb;
+font-size: 13px;
+}
+input:focus {
+outline: none;
+border-color: #60a5fa;
+box-shadow: 0 0 0 1px #60a5fa;
+}
+.btn {
+width: 100%;
+margin-top: 16px;
+padding: 10px 0;
+border: none;
+border-radius: 6px;
+background: linear-gradient(90deg, #3b82f6, #22c55e);
+color: #020617;
+font-weight: 600;
+cursor: pointer;
+font-size: 14px;
+}
+.btn:hover { opacity: 0.9; }
+.message { margin-top: 12px; font-size: 12px; min-height: 18px; }
+.message.error { color: #f97373; }
+.hint { margin-top: 8px; font-size: 11px; color: #9ca3af; }
+</style>
+</head>
+<body>
+<div class="card">
+<div class="card-header">
+<div class="brand">MyFinBank</div>
+<div class="subtitle">Customer Login</div>
+</div>
+
+<form id="loginForm">
+<label for="loginEmail">Email</label>
+<input id="loginEmail" type="email" required>
+
+<label for="loginSecret">Password</label>
+<input id="loginSecret" type="password" required>
+
+<button type="submit" class="btn">Login</button>
+</form>
+
+<div id="msg" class="message"></div>
+<div class="hint">
+New here? Go back to <a href="/index.html" style="color:#93c5fd;">Home</a> and register.
+</div>
+</div>
+
+<script>
+const form = document.getElementById('loginForm');
+const msg = document.getElementById('msg');
+
+// prefill email from query (after registration)
+const urlParams = new URLSearchParams(window.location.search);
+const preEmail = urlParams.get('email');
+if (preEmail) {
+document.getElementById('loginEmail').value = preEmail;
+}
+
+form.addEventListener('submit', async (event) => {
+event.preventDefault();
+msg.textContent = '';
+msg.className = 'message';
+
+const email = document.getElementById('loginEmail').value.trim();
+const password = document.getElementById('loginSecret').value;
+
+if (!email || !password) {
+msg.textContent = 'Email and password are required.';
+msg.className = 'message error';
+return;
+}
+
+const payload = {
+loginName: email, // using email as loginName
+loginSecret: password
+};
+
+try {
+const response = await fetch('/api/customers/login', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(payload)
+});
+
+if (!response.ok) {
+const err = await response.json().catch(() => ({}));
+msg.textContent = err.message || 'Login failed. Check credentials.';
+msg.className = 'message error';
+return;
+}
+
+const data = await response.json(); // { token, customerId, displayName }
+const token = data.token;
+const customerId = data.customerId;
+const fullName = data.displayName || email;
+
+// store JWT + basic info for dashboard
+sessionStorage.setItem('customerJwt', token);
+sessionStorage.setItem('customerId', customerId);
+sessionStorage.setItem('customerName', fullName);
+
+// check if customer already has account
+let accounts = [];
+try {
+const accResp = await fetch(`/api/accounts/customer/${customerId}`);
+if (accResp.ok) {
+accounts = await accResp.json();
+}
+} catch (e) {
+console.error('Failed to check accounts:', e);
+}
+
+if (!accounts || accounts.length === 0) {
+// no account yet -> go to open account page
+window.location.href =
+`/customer-account-open.html?customerId=${encodeURIComponent(customerId)}&fullName=${encodeURIComponent(fullName)}`;
+} else {
+// already has account -> go directly to dashboard with first account
+const mainAcc = accounts[0];
+const params = new URLSearchParams({
+customerId: String(customerId),
+fullName: fullName,
+accountNumber: mainAcc.accountNumber
+});
+window.location.href = '/customer-dashboard.html?' + params.toString();
+}
+
+} catch (e) {
+msg.textContent = 'Could not reach server. Is customer-service running?';
+msg.className = 'message error';
+}
+});
+</script>
+
+</body>

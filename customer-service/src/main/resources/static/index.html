@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyFinBank | Home</title>
+<style>
+body {
+margin: 0;
+font-family: Arial, sans-serif;
+background: radial-gradient(circle at top, #0f172a, #020617);
+color: #e5e7eb;
+}
+.nav {
+background: #020617;
+padding: 14px 32px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+.brand {
+font-size: 22px;
+font-weight: bold;
+color: #38bdf8;
+}
+.container {
+max-width: 900px;
+margin: 40px auto;
+padding: 0 16px;
+}
+h1 {
+margin-bottom: 8px;
+}
+.subtitle {
+font-size: 14px;
+color: #9ca3af;
+margin-bottom: 24px;
+}
+.section-title {
+font-size: 18px;
+margin-top: 26px;
+margin-bottom: 10px;
+}
+.section-card {
+background: rgba(15,23,42,0.95);
+border-radius: 12px;
+padding: 18px 22px;
+box-shadow: 0 18px 40px rgba(0,0,0,0.8);
+margin-bottom: 18px;
+}
+.action-line {
+margin-top: 10px;
+display: flex;
+flex-wrap: wrap;
+gap: 10px;
+}
+.btn-pill {
+padding: 9px 18px;
+border-radius: 999px;
+border: none;
+font-size: 14px;
+font-weight: 600;
+cursor: pointer;
+}
+.btn-primary {
+background: linear-gradient(135deg, #22c55e, #4ade80);
+color: #020617;
+}
+.btn-outline {
+background: transparent;
+color: #e5e7eb;
+border: 1px solid #4b5563;
+}
+.note {
+font-size: 12px;
+color: #9ca3af;
+margin-top: 8px;
+}
+</style>
+</head>
+<body>
+<div class="nav">
+<div class="brand">MyFinBank</div>
+</div>
+
+<div class="container">
+<h1>Welcome to MyFinBank</h1>
+<div class="subtitle">Choose Customer or Admin to continue.</div>
+
+<!-- Customer section -->
+<div class="section-card">
+<div class="section-title">Customer</div>
+<div class="action-line">
+<button class="btn-pill btn-primary"
+onclick="window.location.href='/customer-register.html'">
+Customer Register
+</button>
+<button class="btn-pill btn-outline"
+onclick="window.location.href='/customer-login.html'">
+Customer Login
+</button>
+</div>
+<div class="note">
+Use these options to register, login, open accounts, and access customer services.
+</div>
+</div>
+
+<!-- Admin section -->
+<div class="section-card">
+<div class="section-title">Admin</div>
+<div class="action-line">
+<button class="btn-pill btn-primary"
+onclick="window.location.href='http://localhost:8082/admin-register.html'">
+Admin Register
+</button>
+<button class="btn-pill btn-outline"
+onclick="window.location.href='http://localhost:8082/admin-login.html'">
+Admin Login
+</button>
+</div>
+<div class="note">
+Bank staff/admin can login here to manage customers, loans, and reports.
+</div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyFinBank | Customer Register</title>
+<style>
+body {
+font-family: Arial, sans-serif;
+background: linear-gradient(135deg, #0f172a, #1e293b);
+margin: 0;
+display: flex;
+align-items: center;
+justify-content: center;
+min-height: 100vh;
+color: #e5e7eb;
+}
+.card {
+background-color: #020617;
+padding: 24px 28px;
+border-radius: 12px;
+box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+width: 360px;
+max-width: 90vw;
+}
+.card-header { text-align: center; margin-bottom: 18px; }
+.brand { font-size: 22px; font-weight: bold; color: #38bdf8; }
+.subtitle { font-size: 13px; color: #9ca3af; }
+label { display: block; margin-top: 10px; font-size: 13px; }
+input {
+width: 100%; margin-top: 4px; padding: 8px 10px;
+border-radius: 6px; border: 1px solid #4b5563;
+background-color: #020617; color: #e5e7eb; font-size: 13px;
+}
+input:focus { outline: none; border-color: #38bdf8; box-shadow: 0 0 0 1px #38bdf8; }
+.btn {
+width: 100%; margin-top: 16px; padding: 10px 0;
+border: none; border-radius: 6px;
+background: linear-gradient(90deg, #0ea5e9, #22c55e);
+color: #020617; font-weight: 600; cursor: pointer; font-size: 14px;
+}
+.btn:hover { opacity: 0.9; }
+.message { margin-top: 12px; font-size: 12px; min-height: 18px; }
+.message.error { color: #f97373; }
+.hint { margin-top: 8px; font-size: 11px; color: #9ca3af; }
+</style>
+</head>
+<body>
+<div class="card">
+<div class="card-header">
+<div class="brand">MyFinBank</div>
+<div class="subtitle">Create your customer profile</div>
+</div>
+
+<form id="registerForm">
+<label for="fullName">Full name</label>
+<input id="fullName" type="text" required>
+
+<label for="email">Email address</label>
+<input id="email" type="email" required>
+
+<label for="mobile">Mobile number</label>
+<input id="mobile" type="tel" required>
+
+<label for="loginSecret">Password</label>
+<input id="loginSecret" type="password" required>
+
+<button type="submit" class="btn">Register</button>
+</form>
+
+<div id="msg" class="message"></div>
+<div class="hint">
+After successful registration you will be redirected to the login page.
+</div>
+</div>
+
+<script>
+const form = document.getElementById('registerForm');
+const msg = document.getElementById('msg');
+
+form.addEventListener('submit', async (event) => {
+event.preventDefault();
+msg.textContent = '';
+msg.className = 'message';
+
+const fullName = document.getElementById('fullName').value.trim();
+const email = document.getElementById('email').value.trim();
+const mobile = document.getElementById('mobile').value.trim();
+const loginSecret = document.getElementById('loginSecret').value;
+
+const payload = {
+fullName: fullName,
+email: email,
+mobile: mobile,
+loginName: email, // or another username field if you add it
+loginSecret: loginSecret
+};
+
+
+
+try {
+const response = await fetch('/api/customers/register', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(payload)
+});
+
+if (!response.ok) {
+const err = await response.json().catch(() => ({}));
+msg.textContent = err.message || 'Registration failed. Please check details.';
+msg.className = 'message error';
+return;
+}
+
+msg.textContent = 'Registered successfully. Redirecting to login...';
+
+setTimeout(() => {
+const params = new URLSearchParams({ email: email });
+window.location.href = '/customer-login.html?' + params.toString();
+}, 1500);
+
+} catch (e) {
+msg.textContent = 'Could not reach server. Is customer-service running?';
+msg.className = 'message error';
+}
+});
+</script>
+
+</body>
+</html>

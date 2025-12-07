@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Customer Chat | MyFinBank</title>
+<style>
+body { font-family: Arial, sans-serif; background:#040814; color:#eee; }
+.chat-box { width: 70%; margin: 40px auto; background:#111827; padding:20px; border-radius:8px; }
+.messages { height: 350px; overflow-y: auto; border:1px solid #1f2937; padding:10px; margin-bottom:10px; }
+.msg { margin:6px 0; padding:6px 10px; border-radius:6px; max-width:75%; }
+.me { background:#10b981; margin-left:auto; }
+.them { background:#374151; margin-right:auto; }
+.meta { font-size:11px; opacity:0.7; }
+.input-row { display:flex; gap:8px; }
+.input-row input[type="text"] { flex:1; padding:8px; border-radius:4px; border:1px solid #4b5563; background:#020617; color:#e5e7eb; }
+.input-row button { padding:8px 16px; border:none; border-radius:4px; background:#22c55e; color:#020617; cursor:pointer; }
+.input-row button:hover { background:#16a34a; }
+</style>
+</head>
+<body>
+<div class="chat-box">
+<h2>Chat with Bank Support</h2>
+<div style="margin-bottom:8px;">
+<label>Customer ID: </label>
+<input id="customerId" type="number" />
+<button onclick="loadConversation()">Load</button>
+</div>
+
+<div class="messages" id="messages"></div>
+
+<div class="input-row">
+<input id="messageInput" type="text" placeholder="Type your message..." />
+<button onclick="sendMessage()">Send</button>
+</div>
+</div>
+
+<script>
+const BASE_URL = "/api/chat";
+const ROLE = "CUSTOMER";
+
+function renderMessages(list) {
+const box = document.getElementById('messages');
+box.innerHTML = "";
+if (!list || !list.length) {
+box.innerHTML = '<div class="meta">No messages yet.</div>';
+return;
+}
+list.forEach(m => {
+const div = document.createElement('div');
+div.className = 'msg ' + (m.fromRole === ROLE ? 'me' : 'them');
+const who = m.fromRole === 'CUSTOMER' ? 'You' : 'Admin';
+div.innerHTML = `<div>${m.content}</div><div class="meta">${who} • ${m.sentAt}</div>`;
+box.appendChild(div);
+});
+box.scrollTop = box.scrollHeight;
+}
+
+async function loadConversation() {
+const customerId = document.getElementById('customerId').value;
+if (!customerId) return;
+try {
+const res = await fetch(`${BASE_URL}/conversation/${customerId}`);
+if (!res.ok) {
+alert('Failed to load conversation');
+return;
+}
+const data = await res.json();
+renderMessages(data);
+} catch (e) {
+alert('Error contacting chat service');
+}
+}
+
+async function sendMessage() {
+const customerId = document.getElementById('customerId').value;
+const text = document.getElementById('messageInput').value.trim();
+if (!customerId || !text) return;
+try {
+await fetch(`${BASE_URL}/send`, {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ customerId, fromRole: ROLE, content: text })
+});
+document.getElementById('messageInput').value = "";
+loadConversation();
+} catch (e) {
+alert('Error sending message');
+}
+}
+</script>
+</body>
+</html>

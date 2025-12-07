@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyFinBank | My Loans</title>
+<style>
+body {
+margin: 0;
+font-family: Arial, sans-serif;
+background: radial-gradient(circle at top, #0f172a, #020617);
+color: #e5e7eb;
+}
+.nav {
+background: #020617;
+padding: 14px 32px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+.nav-brand { font-size: 22px; font-weight: bold; color: #38bdf8; }
+.nav-right { font-size: 12px; color: #9ca3af; }
+.container {
+max-width: 900px;
+margin: 32px auto;
+padding: 0 16px 40px;
+}
+.title { font-size: 24px; margin-bottom: 16px; }
+table {
+width: 100%;
+border-collapse: collapse;
+background: rgba(15,23,42,0.95);
+border-radius: 12px;
+overflow: hidden;
+box-shadow: 0 18px 40px rgba(0,0,0,0.8);
+}
+th, td {
+padding: 10px 12px;
+font-size: 13px;
+}
+th {
+background: #020617;
+text-align: left;
+border-bottom: 1px solid #1f2937;
+}
+tr:nth-child(even) {
+background: rgba(15,23,42,0.9);
+}
+.status {
+font-weight: 600;
+}
+.status.APPLIED { color: #38bdf8; }
+.status.APPROVED { color: #4ade80; }
+.status.DENIED { color: #f97373; }
+.msg { margin-top: 12px; font-size: 12px; min-height: 16px; }
+.msg.error { color:#f97373; }
+.back-link {
+margin-top: 16px;
+font-size: 13px;
+}
+.back-link a { color:#93c5fd; text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="nav">
+<div class="nav-brand">MyFinBank</div>
+<div class="nav-right">
+<span id="navCustomer"></span>
+&nbsp;|&nbsp;
+<a href="/index.html" style="color:#93c5fd; text-decoration:none;">Logout</a>
+</div>
+</div>
+
+<div class="container">
+<div class="title">My Loans</div>
+
+<table id="loansTable">
+<thead>
+<tr>
+<th>Loan ID</th>
+<th>Amount</th>
+<th>Interest %</th>
+<th>Months</th>
+<th>EMI</th>
+<th>Status</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody id="loansBody">
+</tbody>
+</table>
+
+<div id="msg" class="msg"></div>
+
+<div class="back-link">
+<a id="backToDashboard" href="#">← Back to Dashboard</a>
+</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const customerId = params.get('customerId');
+const fullName = params.get('fullName') || 'Customer';
+const accountNumber = params.get('accountNumber') || '';
+
+document.getElementById('navCustomer').textContent =
+fullName + ' (ID: ' + (customerId || '-') + ')';
+
+const msg = document.getElementById('msg');
+const tbody = document.getElementById('loansBody');
+
+const backLink = document.getElementById('backToDashboard');
+const dashParams = new URLSearchParams({
+customerId: customerId || '',
+fullName: fullName,
+accountNumber: accountNumber
+});
+backLink.href = '/customer-dashboard.html?' + dashParams.toString();
+
+// REMOVED: authFetch function and JWT-related logic
+
+function buildReason(loan) {
+if (loan.status === 'DENIED') {
+return 'Denied because available balance was below approval threshold.';
+}
+if (loan.status === 'APPROVED') {
+return 'Approved based on current balance.';
+}
+return '';
+}
+
+async function loadLoans() {
+if (!customerId) {
+msg.textContent = 'Customer information missing. Please login again.';
+msg.className = 'msg error';
+return;
+}
+
+try {
+// CHANGED: Using standard fetch instead of authFetch, removing headers
+const resp = await fetch('/api/loans/customer/' + customerId); 
+if (!resp.ok) {
+msg.textContent = 'Could not load loans.';
+msg.className = 'msg error';
+return;
+}
+const loans = await resp.json();
+tbody.innerHTML = '';
+
+if (loans.length === 0) {
+msg.textContent = 'No loans found for this customer.';
+msg.className = 'msg';
+return;
+}
+
+loans.forEach(loan => {
+const tr = document.createElement('tr');
+const statusClass = 'status ' + (loan.status || '').toUpperCase();
+tr.innerHTML = `
+<td>${loan.id}</td>
+<td>${loan.principalAmount}</td>
+<td>${loan.annualRate}</td>
+<td>${loan.months}</td>
+<td>${loan.emiAmount}</td>
+<td class="${statusClass}">${loan.status}</td>
+<td>${buildReason(loan)}</td>
+`;
+tbody.appendChild(tr);
+});
+
+msg.textContent = '';
+msg.className = 'msg';
+} catch (e) {
+msg.textContent = 'Server error while loading loans.';
+msg.className = 'msg error';
+}
+}
+
+loadLoans();
+</script>
+</body>
+</html>

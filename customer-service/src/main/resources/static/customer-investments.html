@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MyFinBank | My Investments</title>
+<style>
+
+body {
+margin: 0;
+font-family: Arial, sans-serif;
+background: radial-gradient(circle at top, #0f172a, #020617);
+color: #e5e7eb;
+}
+.nav {
+background: #020617;
+padding: 14px 32px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+.nav-brand { font-size: 22px; font-weight: bold; color: #38bdf8; }
+.nav-right { font-size: 12px; color: #9ca3af; }
+.container {
+max-width: 900px;
+margin: 32px auto;
+padding: 0 16px 40px;
+}
+.title { font-size: 22px; margin-bottom: 12px; }
+.card {
+background: rgba(15,23,42,0.95);
+border-radius: 12px;
+padding: 20px 24px;
+box-shadow: 0 18px 40px rgba(0,0,0,0.8);
+margin-bottom: 18px;
+}
+.card-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 10px;
+}
+.card-title {
+font-size: 16px;
+font-weight: 600;
+}
+.refresh-btn {
+padding: 5px 12px;
+border-radius: 999px;
+font-size: 11px;
+font-weight: 600;
+border: 1px solid #4b5563;
+background: #020617;
+color: #e5e7eb;
+cursor: pointer;
+}
+table {
+width: 100%;
+border-collapse: collapse;
+font-size: 12px;
+}
+th, td {
+padding: 6px 8px;
+border-bottom: 1px solid #1f2937;
+text-align: left;
+}
+th {
+color: #9ca3af;
+font-weight: 600;
+}
+.badge {
+display: inline-block;
+padding: 2px 8px;
+border-radius: 999px;
+font-size: 11px;
+}
+.badge-active {
+background: rgba(34,197,94,0.15);
+color: #4ade80;
+border: 1px solid rgba(34,197,94,0.5);
+}
+.badge-closed {
+background: rgba(248,113,113,0.15);
+color: #fca5a5;
+border: 1px solid rgba(248,113,113,0.5);
+}
+.message { margin-top: 6px; font-size: 12px; min-height: 16px; }
+.message.error { color:#f97373; }
+.note { margin-top: 10px; font-size: 12px; color:#9ca3af; }
+.btn-secondary {
+padding: 8px 16px;
+border-radius: 999px;
+font-size: 13px;
+font-weight: 600;
+border: 1px solid #4b5563;
+background: #111827;
+color: #e5e7eb;
+cursor: pointer;
+}
+.back-row {
+margin-top: 20px;
+}
+</style>
+</head>
+<body>
+<div class="nav">
+<div class="nav-brand">MyFinBank</div>
+<div class="nav-right">
+<span id="navCustomer"></span>
+&nbsp;|&nbsp;
+<a href="/index.html" style="color:#93c5fd; text-decoration:none;">Logout</a>
+</div>
+</div>
+
+<div class="container">
+<div class="title">My Investments</div>
+
+<div class="card">
+<div class="card-header">
+<div class="card-title">Fixed Deposits</div>
+<button class="refresh-btn" id="refreshFdBtn">Refresh</button>
+</div>
+<div id="fdMsg" class="message"></div>
+<table id="fdTable">
+<thead>
+<tr>
+<th>ID</th>
+<th>Account</th>
+<th>Principal</th>
+<th>Months</th>
+<th>Rate (%)</th>
+<th>Maturity</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<div class="note">Shows all Fixed Deposits linked to your customer profile.</div>
+</div>
+
+<div class="card">
+<div class="card-header">
+<div class="card-title">Recurring Deposits</div>
+<button class="refresh-btn" id="refreshRdBtn">Refresh</button>
+</div>
+<div id="rdMsg" class="message"></div>
+<table id="rdTable">
+<thead>
+<tr>
+<th>ID</th>
+<th>Account</th>
+<th>Monthly</th>
+<th>Months</th>
+<th>Rate (%)</th>
+<th>Maturity</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<div class="note">Shows all Recurring Deposits linked to your customer profile.</div>
+</div>
+
+<div class="back-row">
+<button class="btn-secondary" id="backBtn">Back to Dashboard</button>
+</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const customerId = params.get('customerId');
+const fullName = params.get('fullName') || 'Customer';
+const accountNumber = params.get('accountNumber') || '';
+
+document.getElementById('navCustomer').textContent =
+fullName + ' (ID: ' + (customerId || '-') + ')';
+
+const fdMsg = document.getElementById('fdMsg');
+const rdMsg = document.getElementById('rdMsg');
+
+document.getElementById('backBtn').addEventListener('click', () => {
+const qp = new URLSearchParams({
+customerId: customerId || '',
+fullName: fullName,
+accountNumber: accountNumber || ''
+});
+window.location.href = '/customer-dashboard.html?' + qp.toString();
+});
+
+async function loadFDs() {
+fdMsg.textContent = '';
+fdMsg.className = 'message';
+const tbody = document.querySelector('#fdTable tbody');
+tbody.innerHTML = '';
+
+if (!customerId) {
+fdMsg.textContent = 'Missing customer information.';
+fdMsg.className = 'message error';
+return;
+}
+
+try {
+const resp = await fetch('/api/investments/fd/customer/' + customerId);
+if (!resp.ok) {
+fdMsg.textContent = 'Failed to load Fixed Deposits.';
+fdMsg.className = 'message error';
+return;
+}
+const list = await resp.json();
+if (!list || list.length === 0) {
+fdMsg.textContent = 'No Fixed Deposits found.';
+fdMsg.className = 'message';
+return;
+}
+list.forEach(fd => {
+const tr = document.createElement('tr');
+tr.innerHTML = `
+<td>${fd.id}</td>
+<td>${fd.linkedAccountNumber}</td>
+<td>${fd.principalAmount}</td>
+<td>${fd.months}</td>
+<td>${fd.interestRate}</td>
+<td>${fd.maturityAmount}</td>
+<td>
+<span class="badge ${fd.status === 'ACTIVE' ? 'badge-active' : 'badge-closed'}">
+${fd.status}
+</span>
+</td>
+`;
+tbody.appendChild(tr);
+});
+} catch (e) {
+fdMsg.textContent = 'Server error while loading Fixed Deposits.';
+fdMsg.className = 'message error';
+}
+}
+
+async function loadRDs() {
+rdMsg.textContent = '';
+rdMsg.className = 'message';
+const tbody = document.querySelector('#rdTable tbody');
+tbody.innerHTML = '';
+
+if (!customerId) {
+rdMsg.textContent = 'Missing customer information.';
+rdMsg.className = 'message error';
+return;
+}
+
+try {
+const resp = await fetch('/api/investments/rd/customer/' + customerId);
+if (!resp.ok) {
+rdMsg.textContent = 'Failed to load Recurring Deposits.';
+rdMsg.className = 'message error';
+return;
+}
+const list = await resp.json();
+if (!list || list.length === 0) {
+rdMsg.textContent = 'No Recurring Deposits found.';
+rdMsg.className = 'message';
+return;
+}
+list.forEach(rd => {
+const tr = document.createElement('tr');
+tr.innerHTML = `
+<td>${rd.id}</td>
+<td>${rd.linkedAccountNumber}</td>
+<td>${rd.monthlyInstallment}</td>
+<td>${rd.months}</td>
+<td>${rd.interestRate}</td>
+<td>${rd.maturityAmount}</td>
+<td>
+<span class="badge ${rd.status === 'ACTIVE' ? 'badge-active' : 'badge-closed'}">
+${rd.status}
+</span>
+</td>
+`;
+tbody.appendChild(tr);
+});
+} catch (e) {
+rdMsg.textContent = 'Server error while loading Recurring Deposits.';
+rdMsg.className = 'message error';
+}
+}
+
+document.getElementById('refreshFdBtn').addEventListener('click', loadFDs);
+document.getElementById('refreshRdBtn').addEventListener('click', loadRDs);
+
+loadFDs();
+loadRDs();
+</script>
+</body>
+</html>
